@@ -32,7 +32,6 @@ type Configs struct {
 	RefreshToken       string `json:"refresh_token"`
 	User               int    `json:"user"`
 	Code               string `json:"code"`
-	DeviceCollection   []interface{}
 	ConnectionState    string `json:"connection_state"`
 	Errors             string `json:"errors"`
 }
