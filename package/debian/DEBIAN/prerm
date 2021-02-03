@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+if [ -d /run/systemd/system ] && [ "$1" = remove ]; then
+  deb-systemd-invoke stop adax.service >/dev/null
+  systemctl disable adax.service || true
+  rm /var/log/thingsplex/adax/* || true
+  rm /opt/thingsplex/adax/data/* || true
+fi

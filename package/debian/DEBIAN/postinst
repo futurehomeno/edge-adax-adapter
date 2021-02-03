@@ -1,0 +1,31 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]
+then
+  groupadd -r thingsplex || true
+  groupadd -r adax || true
+
+  useradd -r -N -M -d / -s /bin/false -g thingsplex adax || true
+
+  chown -R adax:thingsplex /var/log/thingsplex/adax/ || true
+  chown -R adax:adax /opt/thingsplex/adax/ || true
+fi
+
+deb-systemd-helper unmask adax.service >/dev/null || true
+
+if deb-systemd-helper --quiet was-enabled adax.service; then
+  systemctl enable adax.service || true
+else
+  deb-systemd-helper update-state adax.service >/dev/null || true
+fi
+
+if [ -d /run/systemd/system ]; then
+  systemctl --system daemon-reload >/dev/null || true
+
+  if [ -n "$2" ]; then
+    deb-systemd-invoke try-restart adax.service >/dev/null || true
+  else
+    deb-systemd-invoke start adax.service >/dev/null || true
+  fi
+fi

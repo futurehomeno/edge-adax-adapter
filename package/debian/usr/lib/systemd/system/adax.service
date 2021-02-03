@@ -1,0 +1,14 @@
+[Unit]
+Description=adax
+
+[Service]
+Type=simple
+ExecStart=/opt/thingsplex/adax/adax
+User=adax
+WorkingDirectory=/opt/thingsplex/adax
+Restart=always
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
