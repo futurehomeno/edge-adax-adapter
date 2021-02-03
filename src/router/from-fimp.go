@@ -3,7 +3,6 @@ package router
 import (
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -23,12 +22,14 @@ type FromFimpRouter struct {
 	client       *adax.Client
 }
 
+// NewFromFimpRouter ...
 func NewFromFimpRouter(mqt *fimpgo.MqttTransport, appLifecycle *model.Lifecycle, configs *model.Configs, states *model.States, client *adax.Client) *FromFimpRouter {
 	fc := FromFimpRouter{inboundMsgCh: make(fimpgo.MessageCh, 5), mqt: mqt, appLifecycle: appLifecycle, configs: configs, states: states, client: client}
 	fc.mqt.RegisterChannel("ch1", fc.inboundMsgCh)
 	return &fc
 }
 
+// Start ...
 func (fc *FromFimpRouter) Start() {
 
 	if err := fc.mqt.Subscribe(fmt.Sprintf("pt:j1/mt:cmd/rt:dev/rn:%s/ad:1/#", model.ServiceName)); err != nil {
@@ -60,18 +61,105 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 	case "thermostat":
 		addr = strings.Replace(addr, "l", "", 1)
+		deviceID, err := strconv.Atoi(addr)
+		if err != nil {
+			log.Error("Can't convert deviceID to int")
+		}
 		switch newMsg.Payload.Type {
 		case "cmd.setpoint.set":
+			val, _ := newMsg.Payload.GetStrMapValue()
+			newTemp, err := strconv.ParseFloat(val["temp"], 32)
+			if err != nil {
+				log.Error("Can't convert newtemp to float")
+				return
+			}
+			for _, homes := range fc.states.HomesAndRooms.Users[0].Homes {
+				for _, rooms := range homes.Rooms {
+					for _, device := range rooms.Devices {
+
+						if deviceID == device.ID {
+							err = state.SetTemperature(fc.configs.User, homes.ID, rooms.ID, newTemp, fc.configs.AccessToken)
+							if err != nil {
+								log.Error(err)
+								return
+							}
+							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: addr}
+							msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, val, nil, nil, newMsg.Payload)
+							fc.mqt.Publish(adr, msg)
+						}
+					}
+				}
+			}
+
 		case "cmd.setpoint.get_report":
+			fc.states.States = nil
+			var err error
+			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
+			if err != nil {
+				log.Error("error: ", err)
+			}
+			for _, homes := range fc.states.States.Users[0].Homes {
+				for _, rooms := range homes.Rooms {
+					for _, device := range rooms.Devices {
+						if deviceID == device.ID {
+							setpointTemp := rooms.TargetTemperature / 100
+							if setpointTemp != 0 {
+								val := map[string]interface{}{
+									"type": "heat",
+									"temp": strconv.Itoa(setpointTemp),
+									"unit": "C",
+								}
+								adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: addr}
+								msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, val, nil, nil, newMsg.Payload)
+								fc.mqt.Publish(adr, msg)
+							}
+						}
+					}
+				}
+			}
+
 		case "cmd.mode.set":
+			// Do we need this? Will/should always be heat
+
 		case "cmd.mode.get_report":
+			val := "heat"
+
+			adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: addr}
+			msg := fimpgo.NewMessage("evt.mode.report", "thermostat", fimpgo.VTypeString, val, nil, nil, newMsg.Payload)
+			fc.mqt.Publish(adr, msg)
 		}
 
 	case "sensor_temp":
 
 		addr = strings.Replace(addr, "l", "", 1)
+		deviceID, err := strconv.Atoi(addr)
+		if err != nil {
+			log.Error("Can't convert deviceID to int")
+		}
 		switch newMsg.Payload.Type {
+
 		case "cmd.sensor.get_report":
+			fc.states.States = nil
+			var err error
+			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
+			if err != nil {
+				log.Error("error: ", err)
+			}
+			for _, homes := range fc.states.States.Users[0].Homes {
+				for _, rooms := range homes.Rooms {
+					for _, device := range rooms.Devices {
+						if deviceID == device.ID {
+							val := rooms.Temperature / 100
+							props := fimpgo.Props{}
+							props["unit"] = "C"
+
+							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: addr}
+							msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, val, props, nil, newMsg.Payload)
+							fc.mqt.Publish(adr, msg)
+						}
+					}
+				}
+			}
 		}
 
 	case model.ServiceName:
@@ -142,10 +230,11 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				if err != nil {
 					log.Error(err)
 					return
-				} else {
-					fc.appLifecycle.SetAuthState(model.AuthStateAuthenticated)
-					fc.appLifecycle.SetConnectionState(model.ConnStateConnected)
 				}
+				fc.appLifecycle.SetConfigState(model.ConfigStateConfigured)
+				fc.appLifecycle.SetAuthState(model.AuthStateAuthenticated)
+				fc.appLifecycle.SetConnectionState(model.ConnStateConnected)
+				fc.appLifecycle.SetAppState(model.AppStateRunning, nil)
 
 			} else {
 				status.Status = "ERROR"
@@ -180,7 +269,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 					for _, room := range home.Rooms {
 						for _, device := range room.Devices {
 							// Include here
-							fc.configs.DeviceCollection = append(fc.configs.DeviceCollection, device)
+							// fc.configs.DeviceCollection = append(fc.configs.DeviceCollection, device)
 							inclReport := ns.MakeInclusionReport(strconv.Itoa(device.ID), device.Name)
 
 							msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
@@ -202,16 +291,20 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			fc.appLifecycle.SetConfigState(model.ConfigStateNotConfigured)
 			fc.appLifecycle.SetAuthState(model.AuthStateNotAuthenticated)
 			fc.appLifecycle.SetConnectionState(model.ConnStateDisconnected)
-			for _, device := range fc.configs.DeviceCollection {
-				log.Info("Excluding device: ")
-				exclVal := map[string]interface{}{
-					"address": device,
+			fc.appLifecycle.SetAppState(model.AppStateNotConfigured, nil)
+			for _, home := range fc.states.HomesAndRooms.Users[0].Homes {
+				for _, room := range home.Rooms {
+					for _, device := range room.Devices {
+						log.Info("Excluding device: ", device.ID)
+						exclVal := map[string]interface{}{
+							"address": device.ID,
+						}
+						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
+						msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
+						fc.mqt.Publish(adr, msg)
+					}
 				}
-				adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-				msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
-				fc.mqt.Publish(adr, msg)
 			}
-			fc.configs.DeviceCollection = nil
 			fc.configs.LoadDefaults()
 			fc.states.LoadDefaults()
 			logoutVal := map[string]interface{}{
@@ -270,6 +363,45 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
 				// if response topic is not set , sending back to default application event topic
 				fc.mqt.Publish(adr, msg)
+			}
+
+		case "cmd.system.sync":
+			var err error
+			fc.states.HomesAndRooms, err = hr.GetHomesAndRooms(fc.configs.User, fc.configs.AccessToken)
+			if err != nil {
+				log.Error("error: ", err)
+			} else {
+				log.Info("HomesAndRooms: ", fc.states.HomesAndRooms)
+			}
+
+			// Get states
+			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
+			if err != nil {
+				log.Error("error: ", err)
+			} else {
+				log.Info("States: ", fc.states.States)
+				// Send inclusion report for all devices
+				for _, home := range fc.states.HomesAndRooms.Users[0].Homes {
+					for _, room := range home.Rooms {
+						for _, device := range room.Devices {
+							// Include here
+							// fc.configs.DeviceCollection = append(fc.configs.DeviceCollection, device)
+							inclReport := ns.MakeInclusionReport(strconv.Itoa(device.ID), device.Name)
+
+							msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
+							adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
+							fc.mqt.Publish(&adr, msg)
+						}
+					}
+				}
+				val2 := map[string]interface{}{
+					"errors":  nil,
+					"success": true,
+				}
+				msg := fimpgo.NewMessage("evt.pd7.response", "vinculum", fimpgo.VTypeObject, val2, nil, nil, newMsg.Payload)
+				if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
+					log.Error("Could not respond to wanted request")
+				}
 			}
 
 		case "cmd.config.get_extended_report":
@@ -356,19 +488,25 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 		case "cmd.network.get_all_nodes":
 			// TODO: This is an example . Add your logic here or remove
 		case "cmd.thing.get_inclusion_report":
-			for _, device := range fc.configs.DeviceCollection {
-				dev := reflect.ValueOf(device)
-				devId := dev.FieldByName("ID").Interface().(int)
-				devName := dev.FieldByName("Name").Interface().(string)
-				log.Debug(devId)
-				log.Debug(devName)
-				inclReport := ns.MakeInclusionReport(strconv.Itoa(devId), devName)
-
-				msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
-				adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-				fc.mqt.Publish(&adr, msg)
+			address, err := newMsg.Payload.GetStringValue()
+			if err != nil {
+				// handle err
+				log.Error(fmt.Errorf("Can't get strValue, error: ", err))
 			}
-			// inclReport := ns.MakeInclusionReport(deviceID)
+			// for _, device := range fc.configs.DeviceCollection {
+			for _, home := range fc.states.HomesAndRooms.Users[0].Homes {
+				for _, room := range home.Rooms {
+					for _, device := range room.Devices {
+						if strconv.Itoa(device.ID) == address {
+							inclReport := ns.MakeInclusionReport(strconv.Itoa(device.ID), device.Name)
+
+							msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
+							adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
+							fc.mqt.Publish(&adr, msg)
+						}
+					}
+				}
+			}
 		case "cmd.thing.inclusion":
 			//flag , _ := newMsg.Payload.GetBoolValue()
 			// TODO: This is an example . Add your logic here or remove
@@ -379,16 +517,16 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				log.Error("Wrong msg format")
 				return
 			}
-			deviceId, ok := val["address"]
+			deviceID, ok := val["address"]
 			if ok {
 				// TODO: This is an example . Add your logic here or remove
 				val := map[string]interface{}{
-					"address": deviceId,
+					"address": deviceID,
 				}
 				adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-				msg := fimpgo.NewMessage("evt.thing.exclusion_report", "mill", fimpgo.VTypeObject, val, nil, nil, nil)
+				msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, val, nil, nil, nil)
 				fc.mqt.Publish(adr, msg)
-				log.Info("Device with deviceID: ", deviceId, " has been removed from network.")
+				log.Info("Device with deviceID: ", deviceID, " has been removed from network.")
 			} else {
 				log.Error("Incorrect address")
 			}
