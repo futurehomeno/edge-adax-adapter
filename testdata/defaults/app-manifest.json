@@ -1,122 +1,47 @@
 {
   "configs":[
     {
-      "id": "param_1",
-      "label": {"en": "Param 1"},
-      "val_t": "bool",
-      "ui": {
-        "type": "list_radio",
-        "select": [{"val": true,"label": {"en": "Option 1"}},{"val": false,"label": {"en": "Option 2"}}]
-      },
-      "val": {
-        "default": false
-      },
-      "is_required": true,
-      "hidden":false,
-      "config_point": "init"
-    },
-    {
-      "id": "param_2",
-      "label": {"en": "Parameter 2"},
+      "id": "poll_time_min",
+      "label": {"en": "Poll time in minutes"},
       "val_t": "string",
       "ui": {
-        "type": "select_horizontal",
-        "select": [{"val": "o1","label": {"en": "Option 1"}},{"val": "o2","label":{"en": "Option 2"}}]
-      },
-      "val": {
-        "default": "o1"
-      },
-      "is_required": true,
-      "hidden":false,
-      "config_point": "any"
-    },
-    {
-      "id": "param_3",
-      "label": {"en": "Parameter 3"},
-      "val_t": "str_map",
-      "ui": {
-        "type": "list_checkbox",
-        "select": [{"val": "o1","label": {"en": "Option 1"}},{"val": "o2","label": {"en": "Option 1"}},{"val":"o3", "label": {"en": "Option 3"}}]
-      },
-      "val": {
-        "default": ["o1","o2"]
-      },
-      "is_required": true,
-      "hidden":false,
-      "config_point": "init"
-    },
-    {
-      "id": "param_4",
-      "label": {"en": "Please enter the code into Apple Home app"},
-      "val_t": "string",
-      "ui": {
-        "type": "input_readonly"
+        "type": "input_string"
       },
       "val": {
         "default": ""
       },
-      "is_required": false,
-      "hidden":false,
-      "config_point": "connection"
+      "config_point": "any"
     }
   ],
   "ui_buttons": [
     {
-      "id":"fh.default.sync",
-      "label": {"en": "Sync"},
+      "id":"sync",
+      "label": {"en": "sync"},
       "req": {
-        "serv":"hue",
+        "serv":"adax",
         "intf_t": "cmd.system.sync",
-        "val": "action1"
-      },
-      "hidden":false
-    },
-    {
-      "id":"reconnect",
-      "label": {"en": "Reconnect"},
-      "req": {
-        "serv":"hue",
-        "intf_t": "cmd.system.reconnect",
-        "val": "action2"
-      },
-      "hidden":false
-    },{
-      "id":"factory_reset",
-      "label": {"en": "Factory reset"},
-      "req": {
-        "serv":"app-one",
-        "intf_t": "cmd.app.factory_reset",
-        "val": "action2"
+        "val": ""
       },
       "hidden":false
     }
-
   ],
   "ui_blocks": [
     {
-      "id": "block_1",
-      "header": {"en": "App configuration"},
-      "text": {"en": ""},
-      "configs": ["param_1","param_2","param_2"],
-      "buttons": ["reconnect"],
-      "footer": {"en": "footer text"},
+      "id": "sync",
+      "header": {"en": "Synchronize with Adax app"},
+      "text": {"en": "The app wil find and include all devices connected to your Adax user. You need to be logged in before synchronizing."},
+      "configs": [],
+      "buttons": ["sync"],
+      "footer": {"en": ""},
       "hidden":false
     },
     {
-      "id": "block_2",
-      "header": {"en": "Security"},
-      "text": {"en": ""},
-      "configs": ["param_4"],
+      "id": "poll_time_min",
+      "header": {"en": "Poll Time"},
+      "text": {"en": "Set how often you want futurehome to get temperature reports from Adax in minutes."},
+      "configs": ["poll_time_min"],
       "buttons": [],
-      "footer": {"en": "footer text"},
-      "hidden":false
-    },{
-      "id": "block_3",
-      "header": {"en": "Factory reset"},
-      "text": {"en": "The operation can't be undone"},
-      "configs": [],
-      "buttons": ["factory_reset"],
-      "footer": {"en": ""},
+      "footer": {"en": "Click save to save new poll time. After changing this value you need to stop and start the Adax app in playgrounds."},
       "hidden":false
     }
   ],
