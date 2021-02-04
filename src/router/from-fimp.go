@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/futurehomeno/fimpgo"
+	"github.com/futurehomeno/fimpgo/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/thingsplex/adax/adax-api"
 	"github.com/thingsplex/adax/model"
@@ -20,12 +21,19 @@ type FromFimpRouter struct {
 	configs      *model.Configs
 	states       *model.States
 	client       *adax.Client
+	env          string
 }
 
 // NewFromFimpRouter ...
 func NewFromFimpRouter(mqt *fimpgo.MqttTransport, appLifecycle *model.Lifecycle, configs *model.Configs, states *model.States, client *adax.Client) *FromFimpRouter {
 	fc := FromFimpRouter{inboundMsgCh: make(fimpgo.MessageCh, 5), mqt: mqt, appLifecycle: appLifecycle, configs: configs, states: states, client: client}
 	fc.mqt.RegisterChannel("ch1", fc.inboundMsgCh)
+	hubInfo, err := utils.NewHubUtils().GetHubInfo()
+	if err == nil && hubInfo != nil {
+		fc.env = hubInfo.Environment
+	} else {
+		fc.env = utils.EnvProd
+	}
 	return &fc
 }
 
@@ -350,6 +358,14 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			} else {
 				syncButton.Hidden = true
 				pollTimeBlock.Hidden = true
+			}
+
+			if fc.env == utils.EnvBeta {
+				manifest.Auth.AuthEndpoint = "https://partners-beta.futurehome.io/api/edge/proxy/custom/auth-code"
+				manifest.Auth.RedirectURL = "https://app-static-beta.futurehome.io/playground_oauth_callback"
+			} else {
+				manifest.Auth.AuthEndpoint = "https://partners.futurehome.io/api/edge/proxy/custom/auth-code"
+				manifest.Auth.RedirectURL = "https://app-static.futurehome.io/playground_oauth_callback"
 			}
 
 			msg := fimpgo.NewMessage("evt.app.manifest_report", model.ServiceName, fimpgo.VTypeObject, manifest, nil, nil, newMsg.Payload)
