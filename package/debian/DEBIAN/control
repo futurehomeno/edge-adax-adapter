@@ -1,7 +1,7 @@
 Package: adax
-Version: 0.0.1
+Version: 0.0.1-1-g69a658a
 Section: non-free/misc
 Priority: optional
 Architecture: armhf
 Maintainer: Markus Haldorsen <markus@futurehome.no>
-Description: Control and monitor Adax Wifi from futurehome.
+Description: Control and monitor Adax WiFi heaters from Futurehome.
