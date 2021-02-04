@@ -173,32 +173,6 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	case model.ServiceName:
 		adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: model.ServiceName, ResourceAddress: "1"}
 		switch newMsg.Payload.Type {
-		case "cmd.auth.login":
-			// Do we need this?
-			authReq := model.Login{}
-			err := newMsg.Payload.GetObjectValue(&authReq)
-			if err != nil {
-				log.Error("Incorrect login message ")
-				return
-			}
-			status := model.AuthStatus{
-				Status:    model.AuthStateAuthenticated,
-				ErrorText: "",
-				ErrorCode: "",
-			}
-			if authReq.Username != "" && authReq.Password != "" {
-				// TODO: This is an example . Add your logic here or remove
-			} else {
-				status.Status = "ERROR"
-				status.ErrorText = "Empty username or password"
-			}
-			fc.appLifecycle.SetAuthState(model.AuthStateAuthenticated)
-			msg := fimpgo.NewMessage("evt.auth.status_report", model.ServiceName, fimpgo.VTypeObject, status, nil, nil, newMsg.Payload)
-			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
-				// if response topic is not set , sending back to default application event topic
-				fc.mqt.Publish(adr, msg)
-			}
-
 		case "cmd.auth.set_tokens":
 			authReq := model.SetTokens{}
 			err := newMsg.Payload.GetObjectValue(&authReq)
@@ -540,11 +514,26 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 					"address": deviceID,
 				}
 				adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-				msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, val, nil, nil, nil)
+				msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, val, nil, nil, newMsg.Payload)
 				fc.mqt.Publish(adr, msg)
 				log.Info("Device with deviceID: ", deviceID, " has been removed from network.")
 			} else {
 				log.Error("Incorrect address")
+			}
+
+		case "cmd.app.uninstall":
+			for _, home := range fc.states.HomesAndRooms.Users[0].Homes {
+				for _, room := range home.Rooms {
+					for _, device := range room.Devices {
+						log.Info("Excluding device: ", device.ID)
+						exclVal := map[string]interface{}{
+							"address": device.ID,
+						}
+						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
+						msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
+						fc.mqt.Publish(adr, msg)
+					}
+				}
 			}
 		}
 	}
