@@ -1,8 +1,7 @@
 Package: adax
 Version: 0.0.1
-Replaces: adax
 Section: non-free/misc
 Priority: optional
 Architecture: armhf
-Maintainer: your namae <dev@your-app.com>
-Description: . futurehome app  
+Maintainer: Markus Haldorsen <markus@futurehome.no>
+Description: Control and monitor Adax Wifi from futurehome.
