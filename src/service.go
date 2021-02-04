@@ -84,15 +84,15 @@ func main() {
 func LoadStates(configs *model.Configs, client *adax.Client, states *model.States, err error, mqtt *fimpgo.MqttTransport) *model.States {
 	hr := adax.HomesAndRooms{}
 	s := adax.State{}
+	lastStates := states.States
+
 	states.HomesAndRooms = nil
 	states.States = nil
 
-	log.Debug("hello")
 	if configs.AccessToken == "" {
 		RefreshTokens(configs, client, err)
 		return states
 	}
-	log.Debug("we made it")
 
 	if configs.User != 0 {
 		states.HomesAndRooms, err = hr.GetHomesAndRooms(configs.User, configs.AccessToken)
@@ -104,17 +104,30 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 			log.Error("error: ", err)
 		}
 
-		for _, home := range states.States.Users[0].Homes {
-			for _, room := range home.Rooms {
+		for i, home := range states.States.Users[0].Homes {
+			for p, room := range home.Rooms {
 				for _, device := range room.Devices {
 					currentTemp := float32(room.Temperature) / 100
 					id := strconv.Itoa(device.ID)
 					props := fimpgo.Props{}
 					props["unit"] = "C"
 
-					adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: id}
-					msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, currentTemp, props, nil, nil)
-					mqtt.Publish(adr, msg)
+					if lastStates != nil {
+						lastTemp := float32(lastStates.Users[0].Homes[i].Rooms[p].Temperature) / 100
+						log.Debug("last temp: ", lastTemp)
+						log.Debug("current temp: ", currentTemp)
+						if lastTemp != currentTemp {
+							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: id}
+							msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, currentTemp, props, nil, nil)
+							mqtt.Publish(adr, msg)
+							log.Debug("New temp. evt.sensor.report sent")
+						}
+					} else {
+						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: id}
+						msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, currentTemp, props, nil, nil)
+						mqtt.Publish(adr, msg)
+						log.Info("Initial sensor report sent")
+					}
 
 					setpointTemp := fmt.Sprintf("%f", (float32(room.TargetTemperature) / 100))
 					setpointVal := map[string]interface{}{
@@ -123,9 +136,22 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 						"unit": "C",
 					}
 					if setpointTemp != "0" {
-						adr = &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: id}
-						msg = fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, setpointVal, nil, nil, nil)
-						mqtt.Publish(adr, msg)
+						if lastStates != nil {
+							lastSetpoint := fmt.Sprintf("%f", float32(lastStates.Users[0].Homes[i].Rooms[p].TargetTemperature)/100)
+							log.Debug("last setpoint: ", lastSetpoint)
+							log.Debug("current setpoint: ", setpointTemp)
+							if lastSetpoint != setpointTemp {
+								adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: id}
+								msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, setpointVal, nil, nil, nil)
+								mqtt.Publish(adr, msg)
+								log.Info("New setpoint. evt.setpoint.report sent")
+							}
+						} else {
+							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: id}
+							msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, setpointVal, nil, nil, nil)
+							mqtt.Publish(adr, msg)
+							log.Info("Initial setpoint report sent")
+						}
 					}
 				}
 			}
@@ -134,6 +160,7 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 	if err = configs.SaveToFile(); err != nil {
 		log.Error("Can't save to config file")
 	}
+	log.Debug("")
 	return states
 }
 
