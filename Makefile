@@ -1,11 +1,14 @@
-version="0.0.1"
 version_file=VERSION
 working_dir=$(shell pwd)
 arch="armhf"
+version:=`git describe --tags | cut -c 2-`
 remote_host = "fh@cube.local"
 
 clean:
-	-rm adax
+	-rm ./src/adax
+
+init:
+	git config core.hooksPath .githooks
 
 build-go:
 	cd ./src;go build -o adax service.go;cd ../
@@ -29,12 +32,12 @@ package-tar:
 clean-deb:
 	find package/debian -name ".DS_Store" -delete
 	find package/debian -name "delete_me" -delete
-	find package/debian -name ".DS_Store" -delete
-	find package/debian -name "delete_me" -delete
 
 package-deb-doc:clean-deb
 	@echo "Packaging application using Thingsplex debian package layout"
 	chmod a+x package/debian/DEBIAN/*
+	mkdir -p package/debian/var/log/thingsplex/adax package/debian/usr/bin
+	mkdir -p package/build
 	cp ./src/adax package/debian/opt/thingsplex/adax
 	cp VERSION package/debian/opt/thingsplex/adax
 	docker run --rm -v ${working_dir}:/build -w /build --name debuild debian dpkg-deb --build package/debian

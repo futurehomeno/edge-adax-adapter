@@ -7,8 +7,8 @@ def set_deb_control(version , arch,file_name):
     template+= "Section: non-free/misc\n"
     template+= "Priority: optional\n"
     template+= "Architecture: "+arch+"\n"
-    template+= "Maintainer: your namae <dev@your-app.com>\n"
-    template+= "Description: . futurehome app  \n"
+    template+= "Maintainer: Markus Haldorsen <markus@futurehome.no>\n"
+    template+= "Description: Controll and monitor Adax WiFi heaters from Futurehome\n"
 
     f = open(file_name,"w")
     f.write(template)
