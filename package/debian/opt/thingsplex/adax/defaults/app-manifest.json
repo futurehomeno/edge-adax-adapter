@@ -57,13 +57,25 @@
   "init_flow":["auth","connect"],
   "services": [
     {
-      "name": "hue",
+      "name": "adax",
       "alias": "Network managment",
-      "address": "/rt:ad/rn:hue/ad:1",
+      "address": "/rt:ad/rn:adax/ad:1",
       "interfaces": [
         {
           "intf_t": "in",
+          "msg_t": "cmd.app.uninstall",
+          "val_t": "null",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
           "msg_t": "cmd.app.get_manifest",
+          "val_t": "null",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.app.get_state",
           "val_t": "null",
           "ver": "1"
         },
@@ -84,22 +96,20 @@
           "msg_t": "evt.app.manifest_report",
           "val_t": "object",
           "ver": "1"
-        },{
-          "intf_t": "out",
-          "msg_t": "cmd.app.get_full_state",
-          "val_t": "string",
-          "ver": "1"
-        },{
-          "intf_t": "out",
-          "msg_t": "cmd.app.full_state_report",
-          "val_t": "object",
-          "ver": "1"
-        },{
+        },
+        {
           "intf_t": "in",
           "msg_t": "cmd.config.extended_set",
           "val_t": "str_map",
           "ver": "1"
-        },{
+        },
+        {
+          "inft_t": "out",
+          "msg_t": "evt.app.config_report",
+          "val_t": "object",
+          "ver": "1"
+        },
+        {
           "intf_t": "in",
           "msg_t": "cmd.auth.set_tokens",
           "val_t": "str_map",
@@ -107,7 +117,13 @@
         },
         {
           "intf_t": "out",
-          "msg_t": "evt.auth.login_report",
+          "msg_t": "evt.auth.status_report",
+          "val_t": "object",
+          "ver": "1"
+        },
+        {
+          "intf_t": "in",
+          "msg_t": "cmd.auth.logout",
           "val_t": "string",
           "ver": "1"
         },
