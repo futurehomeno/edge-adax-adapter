@@ -61,8 +61,15 @@ func main() {
 		log.Error("<main> Internet is not available, the adapter might not work.")
 	}
 	if configs.User != 0 {
+		appLifecycle.SetConfigState(model.ConfigStateConfigured)
+		appLifecycle.SetAuthState(model.AuthStateAuthenticated)
+		appLifecycle.SetConnectionState(model.ConnStateConnected)
 		appLifecycle.SetAppState(model.AppStateRunning, nil)
+
 	} else {
+		appLifecycle.SetConfigState(model.ConfigStateNotConfigured)
+		appLifecycle.SetAuthState(model.AuthStateNotAuthenticated)
+		appLifecycle.SetConnectionState(model.ConnStateDisconnected)
 		appLifecycle.SetAppState(model.AppStateNotConfigured, nil)
 	}
 	for {
