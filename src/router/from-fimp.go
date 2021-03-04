@@ -279,7 +279,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 					for _, device := range room.Devices {
 						log.Info("Excluding device: ", device.ID)
 						exclVal := map[string]interface{}{
-							"address": device.ID,
+							"address": strconv.Itoa(device.ID),
 						}
 						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
 						msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
@@ -527,7 +527,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 					for _, device := range room.Devices {
 						log.Info("Excluding device: ", device.ID)
 						exclVal := map[string]interface{}{
-							"address": device.ID,
+							"address": strconv.Itoa(device.ID),
 						}
 						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
 						msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
