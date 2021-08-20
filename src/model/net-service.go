@@ -68,7 +68,7 @@ func (ns *NetworkService) MakeInclusionReport(id string, name string) fimptype.T
 		Enabled: true,
 		Groups:  []string{"ch_0"},
 		Props: map[string]interface{}{
-			"sup_modes":     []string{"off", "heat"},
+			"sup_modes":     []string{"heat"},
 			"sup_setpoints": []string{"heat"},
 		},
 		Interfaces: thermostatInterfaces,
