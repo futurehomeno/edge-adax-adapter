@@ -384,14 +384,19 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 						}
 					}
 				}
-				val2 := map[string]interface{}{
-					"errors":  nil,
-					"success": true,
+				val2 := model.ButtonActionResponse{
+					Operation:       "cmd.system.sync",
+					OperationStatus: "ok",
+					Next:            "reload",
+					ErrorCode:       "",
+					ErrorText:       "",
 				}
-				msg := fimpgo.NewMessage("evt.pd7.response", "vinculum", fimpgo.VTypeObject, val2, nil, nil, newMsg.Payload)
+
+				msg := fimpgo.NewMessage("evt.app.config_action_report", model.ServiceName, fimpgo.VTypeObject, val2, nil, nil, newMsg.Payload)
 				if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
 					log.Error("Could not respond to wanted request")
 				}
+				log.Info("All devices synced")
 			}
 
 		case "cmd.config.get_extended_report":
