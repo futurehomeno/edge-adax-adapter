@@ -32,7 +32,7 @@ type (
 		RefreshToken string `json:"refresh_token"`
 		User         int    `json:"id"`
 		Args         struct {
-			Code string `"son:"code"`
+			Code string `"json:"code"`
 		} `json:"args"`
 		// States        []State
 		// HomesAndRooms []HomesAndRooms

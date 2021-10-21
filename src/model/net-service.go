@@ -61,6 +61,18 @@ func (ns *NetworkService) MakeInclusionReport(id string, name string) fimptype.T
 		Version:   "1",
 	}}
 
+	meterElecInterfaces := []fimptype.Interface{{
+		Type:      "cmd.meter.get_report",
+		MsgType:   "in",
+		ValueType: "null",
+		Version:   "1",
+	}, {
+		Type:      "evt.meter.report",
+		MsgType:   "out",
+		ValueType: "float",
+		Version:   "1",
+	}}
+
 	thermostatService := fimptype.Service{
 		Name:    "thermostat",
 		Alias:   "thermostat",
@@ -88,11 +100,26 @@ func (ns *NetworkService) MakeInclusionReport(id string, name string) fimptype.T
 		Interfaces:       sensorInterfaces,
 	}
 
+	meterElecService := fimptype.Service{
+		Name:    "meter_elec",
+		Alias:   "Meter Elec",
+		Address: "/rt:dev/rn:adax/ad:1/sv:meter_elec/ad:",
+		Enabled: true,
+		Groups:  []string{"ch_0"},
+		Props: map[string]interface{}{
+			"sup_units": []string{"kWh"},
+		},
+		Tags:             nil,
+		PropSetReference: "",
+		Interfaces:       meterElecInterfaces,
+	}
+
 	manufacturer = "adax"
 	serviceAddress := fmt.Sprintf("%s", id)
 	thermostatService.Address = thermostatService.Address + serviceAddress
 	tempSensorService.Address = tempSensorService.Address + serviceAddress
-	services = append(services, thermostatService, tempSensorService)
+	meterElecService.Address = meterElecService.Address + serviceAddress
+	services = append(services, thermostatService, tempSensorService, meterElecService)
 	deviceAddr = fmt.Sprintf("%s", id)
 	powerSource := "ac"
 

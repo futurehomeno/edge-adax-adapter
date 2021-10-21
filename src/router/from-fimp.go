@@ -170,6 +170,39 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			}
 		}
 
+	case "meter_elec":
+
+		addr = strings.Replace(addr, "l", "", 1)
+		deviceID, err := strconv.Atoi(addr)
+		if err != nil {
+			log.Error("Can't convert deviceID to int")
+		}
+		switch newMsg.Payload.Type {
+		case "cmd.meter.get_report":
+			fc.states.States = nil
+			var err error
+			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
+			if err != nil {
+				log.Error("error: ", err)
+			}
+			for _, homes := range fc.states.States.Users[0].Homes {
+				for _, rooms := range homes.Rooms {
+					for _, device := range rooms.Devices {
+						if deviceID == device.ID {
+
+							val := float64(device.PowerUsage.Energy) / 1000
+							props := fimpgo.Props{}
+							props["unit"] = "kWh"
+
+							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: addr}
+							msg := fimpgo.NewMessage("evt.meter_elec.report", "meter_elec", fimpgo.VTypeFloat, val, props, nil, newMsg.Payload)
+							fc.mqt.Publish(adr, msg)
+						}
+					}
+				}
+			}
+		}
+
 	case model.ServiceName:
 		adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: model.ServiceName, ResourceAddress: "1"}
 		switch newMsg.Payload.Type {
