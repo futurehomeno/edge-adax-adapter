@@ -1,10 +1,10 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/futurehomeno/fimpgo"
 	"github.com/futurehomeno/fimpgo/utils"
@@ -22,6 +22,51 @@ type FromFimpRouter struct {
 	states       *model.States
 	client       *adax.Client
 	env          string
+}
+
+type device struct {
+	ID         int "json:\"id\""
+	PowerUsage struct {
+		TimeFrom int64 "json:\"timeFrom\""
+		TimeTo   int64 "json:\"timeTo\""
+		Energy   int   "json:\"energy\""
+	} "json:\"powerUsage\""
+	Online bool "json:\"online\""
+}
+
+type room struct {
+	ID                int  "json:\"id\""
+	HeatingEnabled    bool "json:\"heatingEnabled\""
+	TargetTemperature int  "json:\"targetTemperature\""
+	Temperature       int  "json:\"temperature\""
+	Devices           []struct {
+		ID         int "json:\"id\""
+		PowerUsage struct {
+			TimeFrom int64 "json:\"timeFrom\""
+			TimeTo   int64 "json:\"timeTo\""
+			Energy   int   "json:\"energy\""
+		} "json:\"powerUsage\""
+		Online bool "json:\"online\""
+	} "json:\"devices\""
+}
+
+type home struct {
+	ID    int "json:\"id\""
+	Rooms []struct {
+		ID                int  "json:\"id\""
+		HeatingEnabled    bool "json:\"heatingEnabled\""
+		TargetTemperature int  "json:\"targetTemperature\""
+		Temperature       int  "json:\"temperature\""
+		Devices           []struct {
+			ID         int "json:\"id\""
+			PowerUsage struct {
+				TimeFrom int64 "json:\"timeFrom\""
+				TimeTo   int64 "json:\"timeTo\""
+				Energy   int   "json:\"energy\""
+			} "json:\"powerUsage\""
+			Online bool "json:\"online\""
+		} "json:\"devices\""
+	} "json:\"rooms\""
 }
 
 // NewFromFimpRouter ...
@@ -63,145 +108,19 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	ns := model.NetworkService{}
 
 	log.Debug("New fimp msg . cmd = ", newMsg.Payload.Type)
-	addr := strings.Replace(newMsg.Addr.ServiceAddress, "_0", "", 1)
-	// ns := model.NetworkService{}
 	switch newMsg.Payload.Service {
 
 	case "thermostat":
-		addr = strings.Replace(addr, "l", "", 1)
-		deviceID, err := strconv.Atoi(addr)
-		if err != nil {
-			log.Error("Can't convert deviceID to int")
-		}
-		switch newMsg.Payload.Type {
-		case "cmd.setpoint.set":
-			val, _ := newMsg.Payload.GetStrMapValue()
-			newTemp, err := strconv.ParseFloat(val["temp"], 32)
-			if err != nil {
-				log.Error("Can't convert newtemp to float")
-				return
-			}
-			for _, homes := range fc.states.HomesAndRooms.Users[0].Homes {
-				for _, rooms := range homes.Rooms {
-					for _, device := range rooms.Devices {
-
-						if deviceID == device.ID {
-							err = state.SetTemperature(fc.configs.User, homes.ID, rooms.ID, newTemp, fc.configs.AccessToken)
-							if err != nil {
-								log.Error(err)
-								return
-							}
-							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: addr}
-							msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, val, nil, nil, newMsg.Payload)
-							fc.mqt.Publish(adr, msg)
-						}
-					}
-				}
-			}
-
-		case "cmd.setpoint.get_report":
-			fc.states.States = nil
-			var err error
-			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
-			if err != nil {
-				log.Error("error: ", err)
-			}
-			for _, homes := range fc.states.States.Users[0].Homes {
-				for _, rooms := range homes.Rooms {
-					for _, device := range rooms.Devices {
-						if deviceID == device.ID {
-							setpointTemp := rooms.TargetTemperature / 100
-							if setpointTemp != 0 {
-								val := map[string]interface{}{
-									"type": "heat",
-									"temp": strconv.Itoa(setpointTemp),
-									"unit": "C",
-								}
-								adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: addr}
-								msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, val, nil, nil, newMsg.Payload)
-								fc.mqt.Publish(adr, msg)
-							}
-						}
-					}
-				}
-			}
-
-		case "cmd.mode.set":
-			// Do we need this? Will/should always be heat
-
-		case "cmd.mode.get_report":
-			val := "heat"
-
-			adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: addr}
-			msg := fimpgo.NewMessage("evt.mode.report", "thermostat", fimpgo.VTypeString, val, nil, nil, newMsg.Payload)
-			fc.mqt.Publish(adr, msg)
-		}
+		deviceID := newMsg.Addr.ServiceAddress
+		fc.handleThermostatMessage(deviceID, newMsg)
 
 	case "sensor_temp":
-
-		addr = strings.Replace(addr, "l", "", 1)
-		deviceID, err := strconv.Atoi(addr)
-		if err != nil {
-			log.Error("Can't convert deviceID to int")
-		}
-		switch newMsg.Payload.Type {
-
-		case "cmd.sensor.get_report":
-			fc.states.States = nil
-			var err error
-			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
-			if err != nil {
-				log.Error("error: ", err)
-			}
-			for _, homes := range fc.states.States.Users[0].Homes {
-				for _, rooms := range homes.Rooms {
-					for _, device := range rooms.Devices {
-						if deviceID == device.ID {
-							val := rooms.Temperature / 100
-							props := fimpgo.Props{}
-							props["unit"] = "C"
-
-							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: addr}
-							msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, val, props, nil, newMsg.Payload)
-							fc.mqt.Publish(adr, msg)
-						}
-					}
-				}
-			}
-		}
+		deviceID := newMsg.Addr.ServiceAddress
+		fc.handleSensorTempMessage(deviceID, newMsg)
 
 	case "meter_elec":
-
-		addr = strings.Replace(addr, "l", "", 1)
-		deviceID, err := strconv.Atoi(addr)
-		if err != nil {
-			log.Error("Can't convert deviceID to int")
-		}
-		switch newMsg.Payload.Type {
-		case "cmd.meter.get_report":
-			fc.states.States = nil
-			var err error
-			fc.states.States, err = state.GetStates(fc.configs.User, fc.configs.AccessToken)
-			if err != nil {
-				log.Error("error: ", err)
-			}
-			for _, homes := range fc.states.States.Users[0].Homes {
-				for _, rooms := range homes.Rooms {
-					for _, device := range rooms.Devices {
-						if deviceID == device.ID {
-
-							val := float64(device.PowerUsage.Energy) / 1000
-							props := fimpgo.Props{}
-							props["unit"] = "kWh"
-
-							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: addr}
-							msg := fimpgo.NewMessage("evt.meter_elec.report", "meter_elec", fimpgo.VTypeFloat, val, props, nil, newMsg.Payload)
-							fc.mqt.Publish(adr, msg)
-						}
-					}
-				}
-			}
-		}
+		deviceID := newMsg.Addr.ServiceAddress
+		fc.handleMeterElecMessage(deviceID, newMsg)
 
 	case model.ServiceName:
 		adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: model.ServiceName, ResourceAddress: "1"}
@@ -575,4 +494,23 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			}
 		}
 	}
+}
+
+func (fc *FromFimpRouter) findHomeRoomAndDeviceFromDeviceID(deviceID string) (home, room, device, error) {
+	deviceIDInt, err := strconv.Atoi(deviceID)
+	if err != nil {
+		log.Error("Can't convert addr/deviceID to int. addr ", deviceIDInt, ", error: ", err)
+		return home{}, room{}, device{}, err
+	}
+
+	for _, home := range fc.states.States.Users[0].Homes {
+		for _, room := range home.Rooms {
+			for _, device := range room.Devices {
+				if deviceIDInt == device.ID {
+					return home, room, device, nil
+				}
+			}
+		}
+	}
+	return home{}, room{}, device{}, errors.New("could not find home, room or device containing device with matching ID")
 }

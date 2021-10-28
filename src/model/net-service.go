@@ -62,13 +62,13 @@ func (ns *NetworkService) MakeInclusionReport(id string, name string) fimptype.T
 	}}
 
 	meterElecInterfaces := []fimptype.Interface{{
-		Type:      "cmd.meter.get_report",
-		MsgType:   "in",
+		Type:      "in",
+		MsgType:   "cmd.meter.get_report",
 		ValueType: "null",
 		Version:   "1",
 	}, {
-		Type:      "evt.meter.report",
-		MsgType:   "out",
+		Type:      "out",
+		MsgType:   "evt.meter.report",
 		ValueType: "float",
 		Version:   "1",
 	}}

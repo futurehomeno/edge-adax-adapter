@@ -166,7 +166,7 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 					props["unit"] = "kWh"
 
 					if lastStates != nil {
-						lastEnergy := float32(lastStates.Users[0].Homes[i].Rooms[p].Devices[k].PowerUsage.Energy) / 100
+						lastEnergy := float32(lastStates.Users[0].Homes[i].Rooms[p].Devices[k].PowerUsage.Energy) / 1000
 						if lastEnergy != currentEnergy {
 							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "meter_elec", ServiceAddress: id}
 							msg := fimpgo.NewMessage("evt.meter.report", "meter_elec", fimpgo.VTypeFloat, currentEnergy, props, nil, nil)
