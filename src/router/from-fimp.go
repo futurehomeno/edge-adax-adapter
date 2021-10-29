@@ -27,7 +27,7 @@ type FromFimpRouter struct {
 type device struct {
 	ID         int "json:\"id\""
 	PowerUsage struct {
-		TimeFrom int64 "json:\"timeFrom\""
+		TimeFrom int64 `json:"timeFrom"`
 		TimeTo   int64 "json:\"timeTo\""
 		Energy   int   "json:\"energy\""
 	} "json:\"powerUsage\""
