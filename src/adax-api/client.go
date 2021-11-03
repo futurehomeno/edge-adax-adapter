@@ -34,52 +34,47 @@ type (
 		Args         struct {
 			Code string `"json:"code"`
 		} `json:"args"`
-		// States        []State
-		// HomesAndRooms []HomesAndRooms
 	}
 
 	State struct {
 		Users []struct {
 			ID     int    `json:"id"`
 			Status string `json:"status"`
-			Homes  []struct {
-				ID    int `json:"id"`
-				Rooms []struct {
-					ID                int  `json:"id"`
-					HeatingEnabled    bool `json:"heatingEnabled"`
-					TargetTemperature int  `json:"targetTemperature"`
-					Temperature       int  `json:"temperature"`
-					Devices           []struct {
-						ID         int `json:"id"`
-						PowerUsage struct {
-							TimeFrom int64 `json:"timeFrom"`
-							TimeTo   int64 `json:"timeTo"`
-							Energy   int   `json:"energy"`
-						} `json:"powerUsage"`
-						Online bool `json:"online"`
-					} `json:"devices"`
-				} `json:"rooms"`
-			} `json:"homes"`
+			Homes  []Home
 		} `json:"users"`
+	}
+
+	Home struct {
+		ID    int    `json:"id"`
+		Name  string `json:"name"`
+		Rooms []Room
+	}
+
+	Room struct {
+		ID                int    `json:"id"`
+		HeatingEnabled    bool   `json:"heatingEnabled"`
+		TargetTemperature int    `json:"targetTemperature"`
+		Temperature       int    `json:"temperature"`
+		Name              string `json:"name"`
+		Devices           []Device
+	}
+
+	Device struct {
+		ID         int    `json:"id"`
+		Name       string `json:"name"`
+		PowerUsage struct {
+			TimeFrom int64 `json:"timeFrom"`
+			TimeTo   int64 `json:"timeTo"`
+			Energy   int   `json:"energy"`
+		} `json:"powerUsage"`
+		Online bool `json:"online"`
 	}
 
 	HomesAndRooms struct {
 		Users []struct {
 			ID     int    `json:"id"`
 			Status string `json:"status"`
-			Homes  []struct {
-				ID    int    `json:"id"`
-				Name  string `json:"name"`
-				Rooms []struct {
-					ID      int    `json:"id"`
-					Name    string `json:"name"`
-					Devices []struct {
-						ID   int    `json:"id"`
-						Name string `json:"name"`
-						Type string `json:"type"`
-					} `json:"devices"`
-				} `json:"rooms"`
-			} `json:"homes"`
+			Homes  []Home
 		} `json:"users"`
 	}
 )

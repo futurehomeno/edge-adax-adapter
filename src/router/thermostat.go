@@ -45,6 +45,7 @@ func (fc *FromFimpRouter) handleSetpointSet(deviceID string, oldMsg *fimpgo.Mess
 
 	home, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 
@@ -65,6 +66,7 @@ func (fc *FromFimpRouter) handleSetpointGet(deviceID string, oldMsg *fimpgo.Mess
 
 	_, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 

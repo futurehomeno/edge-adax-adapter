@@ -24,51 +24,6 @@ type FromFimpRouter struct {
 	env          string
 }
 
-type device struct {
-	ID         int "json:\"id\""
-	PowerUsage struct {
-		TimeFrom int64 `json:"timeFrom"`
-		TimeTo   int64 "json:\"timeTo\""
-		Energy   int   "json:\"energy\""
-	} "json:\"powerUsage\""
-	Online bool "json:\"online\""
-}
-
-type room struct {
-	ID                int  "json:\"id\""
-	HeatingEnabled    bool "json:\"heatingEnabled\""
-	TargetTemperature int  "json:\"targetTemperature\""
-	Temperature       int  "json:\"temperature\""
-	Devices           []struct {
-		ID         int "json:\"id\""
-		PowerUsage struct {
-			TimeFrom int64 "json:\"timeFrom\""
-			TimeTo   int64 "json:\"timeTo\""
-			Energy   int   "json:\"energy\""
-		} "json:\"powerUsage\""
-		Online bool "json:\"online\""
-	} "json:\"devices\""
-}
-
-type home struct {
-	ID    int "json:\"id\""
-	Rooms []struct {
-		ID                int  "json:\"id\""
-		HeatingEnabled    bool "json:\"heatingEnabled\""
-		TargetTemperature int  "json:\"targetTemperature\""
-		Temperature       int  "json:\"temperature\""
-		Devices           []struct {
-			ID         int "json:\"id\""
-			PowerUsage struct {
-				TimeFrom int64 "json:\"timeFrom\""
-				TimeTo   int64 "json:\"timeTo\""
-				Energy   int   "json:\"energy\""
-			} "json:\"powerUsage\""
-			Online bool "json:\"online\""
-		} "json:\"devices\""
-	} "json:\"rooms\""
-}
-
 // NewFromFimpRouter ...
 func NewFromFimpRouter(mqt *fimpgo.MqttTransport, appLifecycle *model.Lifecycle, configs *model.Configs, states *model.States, client *adax.Client) *FromFimpRouter {
 	fc := FromFimpRouter{inboundMsgCh: make(fimpgo.MessageCh, 5), mqt: mqt, appLifecycle: appLifecycle, configs: configs, states: states, client: client}
@@ -496,11 +451,11 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 	}
 }
 
-func (fc *FromFimpRouter) findHomeRoomAndDeviceFromDeviceID(deviceID string) (home, room, device, error) {
+func (fc *FromFimpRouter) findHomeRoomAndDeviceFromDeviceID(deviceID string) (adax.Home, adax.Room, adax.Device, error) {
 	deviceIDInt, err := strconv.Atoi(deviceID)
 	if err != nil {
 		log.Error("Can't convert addr/deviceID to int. addr ", deviceIDInt, ", error: ", err)
-		return home{}, room{}, device{}, err
+		return adax.Home{}, adax.Room{}, adax.Device{}, err
 	}
 
 	for _, home := range fc.states.States.Users[0].Homes {
@@ -512,5 +467,5 @@ func (fc *FromFimpRouter) findHomeRoomAndDeviceFromDeviceID(deviceID string) (ho
 			}
 		}
 	}
-	return home{}, room{}, device{}, errors.New("could not find home, room or device containing device with matching ID")
+	return adax.Home{}, adax.Room{}, adax.Device{}, errors.New("could not find home, room or device containing device with matching ID")
 }
