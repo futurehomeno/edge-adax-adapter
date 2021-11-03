@@ -40,23 +40,23 @@ type (
 		Users []struct {
 			ID     int    `json:"id"`
 			Status string `json:"status"`
-			Homes  []Home
+			Homes  []Home `json:"homes"`
 		} `json:"users"`
 	}
 
 	Home struct {
 		ID    int    `json:"id"`
 		Name  string `json:"name"`
-		Rooms []Room
+		Rooms []Room `json:"rooms"`
 	}
 
 	Room struct {
-		ID                int    `json:"id"`
-		HeatingEnabled    bool   `json:"heatingEnabled"`
-		TargetTemperature int    `json:"targetTemperature"`
-		Temperature       int    `json:"temperature"`
-		Name              string `json:"name"`
-		Devices           []Device
+		ID                int      `json:"id"`
+		HeatingEnabled    bool     `json:"heatingEnabled"`
+		TargetTemperature int      `json:"targetTemperature"`
+		Temperature       int      `json:"temperature"`
+		Name              string   `json:"name"`
+		Devices           []Device `json:"devices"`
 	}
 
 	Device struct {
@@ -74,7 +74,7 @@ type (
 		Users []struct {
 			ID     int    `json:"id"`
 			Status string `json:"status"`
-			Homes  []Home
+			Homes  []Home `json:"homes"`
 		} `json:"users"`
 	}
 )
