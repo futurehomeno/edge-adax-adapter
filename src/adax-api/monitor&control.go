@@ -77,6 +77,7 @@ func (s *State) SetTemperature(userId int, homeId int, roomId int, targetTempera
 
 	if err != nil {
 		log.Error(err)
+
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -86,10 +87,12 @@ func (s *State) SetTemperature(userId int, homeId int, roomId int, targetTempera
 	log.Debug("RESPONSE FROM SETTING TEMP: ", res)
 	if res.StatusCode != 200 {
 		log.Error(res.Status)
+
 		return err
 	}
 	if err != nil {
 		log.Error(err)
+
 		return err
 	}
 	defer res.Body.Close()

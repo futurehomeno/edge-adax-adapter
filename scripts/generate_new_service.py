@@ -19,6 +19,7 @@ def rename_file(old_file_path,new_name):
     if SERVICE_NAME_TEMPLATE in old_file_path:
         new_path = old_file_path.replace(SERVICE_NAME_TEMPLATE,new_name)
         os.replace(old_file_path,new_path)
+        
         return new_path
     return old_file_path
 

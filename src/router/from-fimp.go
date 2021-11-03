@@ -16,7 +16,6 @@ import (
 type FromFimpRouter struct {
 	inboundMsgCh fimpgo.MessageCh
 	mqt          *fimpgo.MqttTransport
-	instanceId   string
 	appLifecycle *model.Lifecycle
 	configs      *model.Configs
 	states       *model.States
@@ -85,6 +84,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			err := newMsg.Payload.GetObjectValue(&authReq)
 			if err != nil {
 				log.Error("Incorrect login message ")
+
 				return
 			}
 			status := model.AuthStatus{
@@ -99,6 +99,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				fc.configs.User, err = fc.client.GetUsers(authReq.AccessToken)
 				if err != nil {
 					log.Error(err)
+
 					return
 				}
 				log.Debug("Users: ", fc.configs.User)
@@ -107,6 +108,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				fc.configs.Code, err = fc.client.GetCode()
 				if err != nil {
 					log.Error(err)
+
 					return
 				}
 				log.Debug("Code: ", fc.configs.Code)
@@ -118,6 +120,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 				if err != nil {
 					log.Error(err)
+
 					return
 				}
 				fc.appLifecycle.SetConfigState(model.ConfigStateConfigured)
@@ -163,7 +166,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 							msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
 							adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-							fc.mqt.Publish(&adr, msg)
+							if err := fc.mqt.Publish(&adr, msg); err != nil {
+								log.Error(err)
+							}
 						}
 					}
 				}
@@ -190,12 +195,20 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 						}
 						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
 						msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
-						fc.mqt.Publish(adr, msg)
+						if err := fc.mqt.Publish(adr, msg); err != nil {
+							log.Error(err)
+						}
 					}
 				}
 			}
-			fc.configs.LoadDefaults()
-			fc.states.LoadDefaults()
+			if err := fc.configs.LoadDefaults(); err != nil {
+				log.Error(err)
+			}
+
+			if err := fc.states.LoadDefaults(); err != nil {
+				log.Error(err)
+			}
+
 			logoutVal := map[string]interface{}{
 				"errors":  nil,
 				"success": true,
@@ -209,12 +222,14 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			mode, err := newMsg.Payload.GetStringValue()
 			if err != nil {
 				log.Error("Incorrect request format ")
+
 				return
 			}
 			manifest := model.NewManifest()
 			err = manifest.LoadFromFile(filepath.Join(fc.configs.GetDefaultDir(), "app-manifest.json"))
 			if err != nil {
 				log.Error("Failed to load manifest file .Error :", err.Error())
+
 				return
 			}
 			if mode == "manifest_state" {
@@ -252,14 +267,18 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			msg := fimpgo.NewMessage("evt.app.manifest_report", model.ServiceName, fimpgo.VTypeObject, manifest, nil, nil, newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
 				// if response topic is not set , sending back to default application event topic
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 			}
 
 		case "cmd.app.get_state":
 			msg := fimpgo.NewMessage("evt.app.manifest_report", model.ServiceName, fimpgo.VTypeObject, fc.appLifecycle.GetAllStates(), nil, nil, newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
 				// if response topic is not set , sending back to default application event topic
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 			}
 
 		case "cmd.system.sync":
@@ -287,7 +306,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 							msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
 							adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-							fc.mqt.Publish(&adr, msg)
+							if err := fc.mqt.Publish(&adr, msg); err != nil {
+								log.Error(err)
+							}
 						}
 					}
 				}
@@ -310,7 +331,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 			msg := fimpgo.NewMessage("evt.config.extended_report", model.ServiceName, fimpgo.VTypeObject, fc.configs, nil, nil, newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 			}
 
 		case "cmd.config.extended_set":
@@ -319,6 +342,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			if err != nil {
 				// TODO: This is an example . Add your logic here or remove
 				log.Error("Can't parse configuration object")
+
 				return
 			}
 			pollTimeMin := conf.PollTimeMin
@@ -328,7 +352,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				log.Error(fmt.Sprintf("%q is not a number or contains illegal symbols.", pollTimeMin))
 			} else {
 				fc.configs.PollTimeMin = pollTimeMin
-				fc.configs.SaveToFile()
+				if err := fc.configs.SaveToFile(); err != nil {
+					log.Error(err)
+				}
 				log.Debugf("App reconfigured . New parameters : %v", fc.configs)
 			}
 
@@ -338,7 +364,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			}
 			msg := fimpgo.NewMessage("evt.app.config_report", model.ServiceName, fimpgo.VTypeObject, configReport, nil, nil, newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 			}
 
 		case "cmd.log.set_level":
@@ -351,7 +379,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			if err == nil {
 				log.SetLevel(logLevel)
 				fc.configs.LogLevel = level
-				fc.configs.SaveToFile()
+				if err := fc.configs.SaveToFile(); err != nil {
+					log.Error(err)
+				}
 			}
 			log.Info("Log level updated to = ", logLevel)
 
@@ -368,7 +398,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			}
 			msg := fimpgo.NewMessage("evt.app.config_action_report", model.ServiceName, fimpgo.VTypeObject, val, nil, nil, newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 			}
 
 		case "cmd.app.factory_reset":
@@ -384,7 +416,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			fc.appLifecycle.SetAuthState(model.AuthStateNotAuthenticated)
 			msg := fimpgo.NewMessage("evt.app.config_action_report", model.ServiceName, fimpgo.VTypeObject, val, nil, nil, newMsg.Payload)
 			if err := fc.mqt.RespondToRequest(newMsg.Payload, msg); err != nil {
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 			}
 
 		case "cmd.network.get_all_nodes":
@@ -404,7 +438,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 
 							msg := fimpgo.NewMessage("evt.thing.inclusion_report", "adax", fimpgo.VTypeObject, inclReport, nil, nil, nil)
 							adr := fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
-							fc.mqt.Publish(&adr, msg)
+							if err := fc.mqt.Publish(&adr, msg); err != nil {
+								log.Error(err)
+							}
 						}
 					}
 				}
@@ -417,6 +453,7 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 			val, err := newMsg.Payload.GetStrMapValue()
 			if err != nil {
 				log.Error("Wrong msg format")
+
 				return
 			}
 			deviceID, ok := val["address"]
@@ -427,7 +464,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 				}
 				adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
 				msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, val, nil, nil, newMsg.Payload)
-				fc.mqt.Publish(adr, msg)
+				if err := fc.mqt.Publish(adr, msg); err != nil {
+					log.Error(err)
+				}
 				log.Info("Device with deviceID: ", deviceID, " has been removed from network.")
 			} else {
 				log.Error("Incorrect address")
@@ -443,7 +482,9 @@ func (fc *FromFimpRouter) routeFimpMessage(newMsg *fimpgo.Message) {
 						}
 						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeAdapter, ResourceName: "adax", ResourceAddress: "1"}
 						msg := fimpgo.NewMessage("evt.thing.exclusion_report", "adax", fimpgo.VTypeObject, exclVal, nil, nil, newMsg.Payload)
-						fc.mqt.Publish(adr, msg)
+						if err := fc.mqt.Publish(adr, msg); err != nil {
+							log.Error(err)
+						}
 					}
 				}
 			}
@@ -455,6 +496,7 @@ func (fc *FromFimpRouter) findHomeRoomAndDeviceFromDeviceID(deviceID string) (ad
 	deviceIDInt, err := strconv.Atoi(deviceID)
 	if err != nil {
 		log.Error("Can't convert addr/deviceID to int. addr ", deviceIDInt, ", error: ", err)
+
 		return adax.Home{}, adax.Room{}, adax.Device{}, err
 	}
 

@@ -29,10 +29,12 @@ func (fc *FromFimpRouter) handleThermostatMessage(deviceID string, oldMsg *fimpg
 
 		adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: deviceID}
 		msg := fimpgo.NewMessage("evt.mode.report", "thermostat", fimpgo.VTypeString, val, nil, nil, oldMsg.Payload)
-		fc.mqt.Publish(adr, msg)
-	}
-	return
+		if err := fc.mqt.Publish(adr, msg); err != nil {
+			log.Error(err)
 
+			return
+		}
+	}
 }
 
 func (fc *FromFimpRouter) handleSetpointSet(deviceID string, oldMsg *fimpgo.Message) error {
@@ -40,12 +42,14 @@ func (fc *FromFimpRouter) handleSetpointSet(deviceID string, oldMsg *fimpgo.Mess
 	newTemp, err := strconv.ParseFloat(val["temp"], 32)
 	if err != nil {
 		log.Error("Can't convert newtemp to float")
+
 		return err
 	}
 
 	home, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
 		log.Error(err)
+
 		return err
 	}
 
@@ -67,6 +71,7 @@ func (fc *FromFimpRouter) handleSetpointGet(deviceID string, oldMsg *fimpgo.Mess
 	_, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
 		log.Error(err)
+
 		return err
 	}
 
@@ -93,6 +98,11 @@ func (fc *FromFimpRouter) sendSetpointReport(deviceID string, setpointTemp float
 
 	adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: deviceID}
 	msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, val, nil, nil, reqMessage)
-	fc.mqt.Publish(adr, msg)
+	if err := fc.mqt.Publish(adr, msg); err != nil {
+		log.Error(err)
+
+		return err
+	}
+
 	return nil
 }

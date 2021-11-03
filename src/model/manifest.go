@@ -120,11 +120,13 @@ func (m *Manifest) LoadFromFile(filePath string) error {
 	file, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Error("<manifest> Can't open manifest file.")
+
 		return err
 	}
 	err = json.Unmarshal(file, m)
 	if err != nil {
 		log.Error("<FlMan> Can't unmarshal manifest file.")
+
 		return err
 	}
 	return nil
@@ -134,12 +136,14 @@ func (m *Manifest) SaveToFile(filePath string) error {
 	flowMetaByte, err := json.Marshal(m)
 	if err != nil {
 		log.Error("<manifest> Can't marshal imported file ")
+
 		return err
 	}
 	log.Debugf("<manifest> Saving manifest to file %s :", filePath)
 	err = ioutil.WriteFile(filePath, flowMetaByte, 0644)
 	if err != nil {
 		log.Error("<manifest>Can't save flow to file . Error : ", err)
+
 		return err
 	}
 	return nil

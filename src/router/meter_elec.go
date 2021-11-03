@@ -22,6 +22,7 @@ func (fc *FromFimpRouter) sendMeterReport(deviceID string, oldMsg *fimpgo.Messag
 	_, _, device, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
 		log.Error(err)
+
 		return err
 	}
 
@@ -31,6 +32,10 @@ func (fc *FromFimpRouter) sendMeterReport(deviceID string, oldMsg *fimpgo.Messag
 
 	adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "meter_elec", ServiceAddress: deviceID}
 	msg := fimpgo.NewMessage("evt.meter.report", "meter", fimpgo.VTypeFloat, val, props, nil, oldMsg.Payload)
-	fc.mqt.Publish(adr, msg)
+	if err := fc.mqt.Publish(adr, msg); err != nil {
+		log.Error(err)
+
+		return err
+	}
 	return nil
 }

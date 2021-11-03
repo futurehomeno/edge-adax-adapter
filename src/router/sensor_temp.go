@@ -22,6 +22,7 @@ func (fc *FromFimpRouter) sendTempReport(deviceID string, oldMsg *fimpgo.Message
 	_, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
 		log.Error(err)
+
 		return err
 	}
 
@@ -31,6 +32,10 @@ func (fc *FromFimpRouter) sendTempReport(deviceID string, oldMsg *fimpgo.Message
 
 	adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: deviceID}
 	msg := fimpgo.NewMessage("evt.sensor.report", "sensor", fimpgo.VTypeFloat, val, props, nil, oldMsg.Payload)
-	fc.mqt.Publish(adr, msg)
+	if err := fc.mqt.Publish(adr, msg); err != nil {
+		log.Error(err)
+
+		return err
+	}
 	return nil
 }

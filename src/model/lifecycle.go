@@ -207,6 +207,7 @@ func (al *Lifecycle) WaitForState(subId string, targetState State) {
 	for evt := range ch {
 		if evt.Type == SystemEventTypeState && evt.State == targetState {
 			al.Unsubscribe(subId)
+
 			return
 		}
 	}

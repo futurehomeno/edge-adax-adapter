@@ -1,8 +1,6 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/futurehomeno/fimpgo/fimptype"
 )
 
@@ -115,12 +113,12 @@ func (ns *NetworkService) MakeInclusionReport(id string, name string) fimptype.T
 	}
 
 	manufacturer = "adax"
-	serviceAddress := fmt.Sprintf("%s", id)
+	serviceAddress := id
 	thermostatService.Address = thermostatService.Address + serviceAddress
 	tempSensorService.Address = tempSensorService.Address + serviceAddress
 	meterElecService.Address = meterElecService.Address + serviceAddress
 	services = append(services, thermostatService, tempSensorService, meterElecService)
-	deviceAddr = fmt.Sprintf("%s", id)
+	deviceAddr = id
 	powerSource := "ac"
 
 	inclReport := fimptype.ThingInclusionReport{
