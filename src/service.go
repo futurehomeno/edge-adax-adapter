@@ -45,6 +45,9 @@ func main() {
 
 	mqtt := fimpgo.NewMqttTransport(configs.MqttServerURI, configs.MqttClientIdPrefix, configs.MqttUsername, configs.MqttPassword, true, 1, 1)
 	err = mqtt.Start()
+	if err != nil {
+		log.Error(err)
+	}
 	defer mqtt.Stop()
 
 	responder := discovery.NewServiceDiscoveryResponder(mqtt)
@@ -98,6 +101,7 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 
 	if configs.AccessToken == "" {
 		RefreshTokens(configs, client, err)
+
 		return states
 	}
 
@@ -113,7 +117,7 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 
 		for i, home := range states.States.Users[0].Homes {
 			for p, room := range home.Rooms {
-				for _, device := range room.Devices {
+				for k, device := range room.Devices {
 					currentTemp := float32(room.Temperature) / 100
 					id := strconv.Itoa(device.ID)
 					props := fimpgo.Props{}
@@ -121,18 +125,24 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 
 					if lastStates != nil {
 						lastTemp := float32(lastStates.Users[0].Homes[i].Rooms[p].Temperature) / 100
-						log.Debug("last temp: ", lastTemp)
-						log.Debug("current temp: ", currentTemp)
 						if lastTemp != currentTemp {
 							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: id}
 							msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, currentTemp, props, nil, nil)
-							mqtt.Publish(adr, msg)
+							if err := mqtt.Publish(adr, msg); err != nil {
+								log.Error(err)
+							}
+
+							log.Debug("last temp: ", lastTemp)
+							log.Debug("current temp: ", currentTemp)
 							log.Debug("New temp. evt.sensor.report sent")
 						}
 					} else {
 						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "sensor_temp", ServiceAddress: id}
 						msg := fimpgo.NewMessage("evt.sensor.report", "sensor_temp", fimpgo.VTypeFloat, currentTemp, props, nil, nil)
-						mqtt.Publish(adr, msg)
+						if err := mqtt.Publish(adr, msg); err != nil {
+							log.Error(err)
+						}
+
 						log.Info("Initial sensor report sent")
 					}
 
@@ -145,20 +155,50 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 					if setpointTemp != "0" {
 						if lastStates != nil {
 							lastSetpoint := fmt.Sprintf("%f", float32(lastStates.Users[0].Homes[i].Rooms[p].TargetTemperature)/100)
-							log.Debug("last setpoint: ", lastSetpoint)
-							log.Debug("current setpoint: ", setpointTemp)
 							if lastSetpoint != setpointTemp {
 								adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: id}
 								msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, setpointVal, nil, nil, nil)
-								mqtt.Publish(adr, msg)
+								if err := mqtt.Publish(adr, msg); err != nil {
+									log.Error(err)
+								}
+
+								log.Debug("last setpoint: ", lastSetpoint)
+								log.Debug("current setpoint: ", setpointTemp)
 								log.Info("New setpoint. evt.setpoint.report sent")
 							}
 						} else {
 							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "thermostat", ServiceAddress: id}
 							msg := fimpgo.NewMessage("evt.setpoint.report", "thermostat", fimpgo.VTypeStrMap, setpointVal, nil, nil, nil)
-							mqtt.Publish(adr, msg)
+							if err := mqtt.Publish(adr, msg); err != nil {
+								log.Error(err)
+							}
 							log.Info("Initial setpoint report sent")
 						}
+					}
+
+					currentEnergy := float32(device.PowerUsage.Energy) / 1000
+					props = fimpgo.Props{}
+					props["unit"] = "kWh"
+
+					if lastStates != nil {
+						lastEnergy := float32(lastStates.Users[0].Homes[i].Rooms[p].Devices[k].PowerUsage.Energy) / 1000
+						if lastEnergy != currentEnergy {
+							adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "meter_elec", ServiceAddress: id}
+							msg := fimpgo.NewMessage("evt.meter.report", "meter_elec", fimpgo.VTypeFloat, currentEnergy, props, nil, nil)
+							if err := mqtt.Publish(adr, msg); err != nil {
+								log.Error(err)
+							}
+							log.Debug("last energy: ", lastEnergy)
+							log.Debug("current energy: ", currentEnergy)
+							log.Debug("New energy. evt.meter.report sent")
+						}
+					} else {
+						adr := &fimpgo.Address{MsgType: fimpgo.MsgTypeEvt, ResourceType: fimpgo.ResourceTypeDevice, ResourceName: model.ServiceName, ResourceAddress: "1", ServiceName: "meter_elec", ServiceAddress: id}
+						msg := fimpgo.NewMessage("evt.meter.report", "meter_elec", fimpgo.VTypeFloat, currentEnergy, props, nil, nil)
+						if err := mqtt.Publish(adr, msg); err != nil {
+							log.Error(err)
+						}
+						log.Debug("Initial meter report sent")
 					}
 				}
 			}
@@ -168,6 +208,7 @@ func LoadStates(configs *model.Configs, client *adax.Client, states *model.State
 		log.Error("Can't save to config file")
 	}
 	log.Debug("")
+
 	return states
 }
 
@@ -188,9 +229,11 @@ func RefreshTokens(configs *model.Configs, client *adax.Client, err error) {
 	if err != nil {
 		log.Error(err)
 		log.Error("Can't get new tokens.")
+
 		return
 	}
-	log.Debug("NEW ACCESS TOKEN: ", configs.AccessToken)
-	log.Debug("NEW REFRESH TOKEN: ", configs.RefreshToken)
+	log.Info("New access token: ", configs.AccessToken)
+	log.Info("New refresh token: ", configs.RefreshToken)
+
 	return
 }

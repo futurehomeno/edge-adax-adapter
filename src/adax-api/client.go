@@ -3,7 +3,6 @@ package adax
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -13,8 +12,7 @@ import (
 )
 
 const (
-	API_URL         = "https://api-1.adax.no/client-api"
-	adaxPartnerCode = "adax"
+	API_URL = "https://api-1.adax.no/client-api"
 )
 
 type (
@@ -32,54 +30,49 @@ type (
 		RefreshToken string `json:"refresh_token"`
 		User         int    `json:"id"`
 		Args         struct {
-			Code string `"son:"code"`
+			Code string `json:"code"`
 		} `json:"args"`
-		// States        []State
-		// HomesAndRooms []HomesAndRooms
 	}
 
 	State struct {
 		Users []struct {
 			ID     int    `json:"id"`
 			Status string `json:"status"`
-			Homes  []struct {
-				ID    int `json:"id"`
-				Rooms []struct {
-					ID                int  `json:"id"`
-					HeatingEnabled    bool `json:"heatingEnabled"`
-					TargetTemperature int  `json:"targetTemperature"`
-					Temperature       int  `json:"temperature"`
-					Devices           []struct {
-						ID         int `json:"id"`
-						PowerUsage struct {
-							TimeFrom int64 `json:"timeFrom"`
-							TimeTo   int64 `json:"timeTo"`
-							Energy   int   `json:"energy"`
-						} `json:"powerUsage"`
-						Online bool `json:"online"`
-					} `json:"devices"`
-				} `json:"rooms"`
-			} `json:"homes"`
+			Homes  []Home `json:"homes"`
 		} `json:"users"`
+	}
+
+	Home struct {
+		ID    int    `json:"id"`
+		Name  string `json:"name"`
+		Rooms []Room `json:"rooms"`
+	}
+
+	Room struct {
+		ID                int      `json:"id"`
+		HeatingEnabled    bool     `json:"heatingEnabled"`
+		TargetTemperature int      `json:"targetTemperature"`
+		Temperature       int      `json:"temperature"`
+		Name              string   `json:"name"`
+		Devices           []Device `json:"devices"`
+	}
+
+	Device struct {
+		ID         int    `json:"id"`
+		Name       string `json:"name"`
+		PowerUsage struct {
+			TimeFrom int64 `json:"timeFrom"`
+			TimeTo   int64 `json:"timeTo"`
+			Energy   int   `json:"energy"`
+		} `json:"powerUsage"`
+		Online bool `json:"online"`
 	}
 
 	HomesAndRooms struct {
 		Users []struct {
 			ID     int    `json:"id"`
 			Status string `json:"status"`
-			Homes  []struct {
-				ID    int    `json:"id"`
-				Name  string `json:"name"`
-				Rooms []struct {
-					ID      int    `json:"id"`
-					Name    string `json:"name"`
-					Devices []struct {
-						ID   int    `json:"id"`
-						Name string `json:"name"`
-						Type string `json:"type"`
-					} `json:"devices"`
-				} `json:"rooms"`
-			} `json:"homes"`
+			Homes  []Home `json:"homes"`
 		} `json:"users"`
 	}
 )
@@ -111,17 +104,13 @@ func (clt *Client) Login(username, password string) error {
 	if err != nil {
 		fmt.Println(err)
 	}
-	type AccessResponse struct {
-		oauth2Client *edgeapp.FhOAuth2Client
-		httpClient   *http.Client
-		accessToken  string `json:"access_token"`
-		refreshToken string `json:"refresh_token"`
-	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := client.Do(req)
-	ProcessHTTPResponse(res, err, clt)
+	if err := ProcessHTTPResponse(res, err, clt); err != nil {
+		return err
+	}
 
 	log.Debug("<client> New access token: ", clt.AccessToken)
 	defer res.Body.Close()
@@ -197,7 +186,7 @@ func (clt *Client) GetTokens(code string) (string, string, error) {
 }
 
 func (clt *Client) RefreshTokens(refreshToken string) error {
-	url := fmt.Sprintf("%s%s%s", API_URL, "/auth/token")
+	url := fmt.Sprintf("%s%s", API_URL, "/auth/token")
 	method := "POST"
 
 	if refreshToken == "" {
@@ -205,6 +194,7 @@ func (clt *Client) RefreshTokens(refreshToken string) error {
 	}
 	if refreshToken == "" {
 		log.Error("<client> Empty refresh token")
+
 		return fmt.Errorf("empty refresh token")
 	}
 
@@ -236,61 +226,32 @@ func (clt *Client) RefreshAccessToken(refreshToken string) (string, error) {
 	}
 	if refreshToken == "" {
 		log.Error("<client> Empty refresh token")
+
 		return "", fmt.Errorf("empty refresh token")
 	}
 	resp, err := clt.Oauth2Client.ExchangeRefreshToken(refreshToken)
 	if err != nil {
 		log.Error("can't fetch new access token", err)
+
 		return "", err
 	}
 	log.Debug("<client> New access token : ", resp.AccessToken)
 	clt.AccessToken = resp.AccessToken
-	return resp.AccessToken, nil
-}
 
-// do a generic HTTP request
-func (clt *Client) doHttpRequest(req *http.Request) ([]byte, error) {
-	var err error
-	var resp *http.Response
-	for i := 0; i < 3; i++ {
-		resp, err = clt.HttpClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		if resp.StatusCode == 200 {
-			break
-		} else if resp.StatusCode == 401 {
-			log.Info("Invalid token . Retrying")
-			_, err = clt.RefreshAccessToken(clt.RefreshToken)
-			if err != nil {
-				time.Sleep(time.Second * 5)
-			} else {
-				req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", clt.AccessToken))
-			}
-		} else if resp.StatusCode != 200 {
-			log.Error("Bad HTTP return code ", resp.StatusCode)
-			return nil, err
-		}
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Error("Bad HTTP return code ", resp.StatusCode)
-		return nil, fmt.Errorf("bad HTTP return code %d", resp.StatusCode)
-	}
-	return ioutil.ReadAll(resp.Body)
+	return resp.AccessToken, nil
 }
 
 func ProcessHTTPResponse(resp *http.Response, err error, holder interface{}) error {
 	if err != nil {
 		log.Error(fmt.Errorf("API does not respond"))
+
 		return err
 	}
 	defer resp.Body.Close()
 	// check http return code
 	if resp.StatusCode != 200 {
-		//bytes, _ := ioutil.ReadAll(resp.Body)
-
 		log.Error("Bad HTTP return code ", resp.StatusCode)
+
 		return fmt.Errorf("Bad HTTP return code %d", resp.StatusCode)
 	}
 

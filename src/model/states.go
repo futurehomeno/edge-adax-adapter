@@ -53,6 +53,10 @@ func (st *States) SaveToFile() error {
 	st.ConfiguredBy = "auto"
 	st.ConfiguredAt = time.Now().Format(time.RFC3339)
 	bpayload, err := json.Marshal(st)
+	if err != nil {
+		return err
+	}
+
 	err = ioutil.WriteFile(st.path, bpayload, 0664)
 	if err != nil {
 		return err
@@ -69,10 +73,8 @@ func (st *States) LoadDefaults() error {
 }
 
 func (st *States) IsConfigured() bool {
-	if true {
-		return true
-	}
-	return false
+	// TODO : Add logic here
+	return true
 }
 
 type StateReport struct {

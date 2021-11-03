@@ -67,6 +67,10 @@ func (cf *Configs) SaveToFile() error {
 	cf.ConfiguredBy = "auto"
 	cf.ConfiguredAt = time.Now().Format(time.RFC3339)
 	bpayload, err := json.Marshal(cf)
+	if err != nil {
+		return err
+	}
+
 	err = ioutil.WriteFile(cf.path, bpayload, 0664)
 	if err != nil {
 		return err
@@ -87,6 +91,7 @@ func (cf *Configs) LoadDefaults() error {
 	os.Remove(configFile)
 	log.Info("Config file doesn't exist.Loading default config")
 	defaultConfigFile := filepath.Join(cf.WorkDir, "defaults", "config.json")
+
 	return utils.CopyFile(defaultConfigFile, configFile)
 }
 
