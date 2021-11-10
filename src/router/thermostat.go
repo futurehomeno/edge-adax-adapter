@@ -46,6 +46,10 @@ func (fc *FromFimpRouter) handleSetpointSet(deviceID string, oldMsg *fimpgo.Mess
 		return err
 	}
 
+	if newTemp >= 35 {
+		newTemp = 35
+	}
+
 	home, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
 	if err != nil {
 		log.Error(err)
