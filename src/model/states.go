@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/futurehomeno/edge-adax-adapter/adax-api"
+	"github.com/futurehomeno/edge-adax-adapter/utils"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/adax-api"
-	"github.com/thingsplex/adax/utils"
 )
 
 type States struct {

@@ -1,9 +1,9 @@
 package router
 
 import (
+	"github.com/futurehomeno/edge-adax-adapter/model"
 	"github.com/futurehomeno/fimpgo"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/model"
 )
 
 func (fc *FromFimpRouter) handleSensorTempMessage(deviceID string, oldMsg *fimpgo.Message) {

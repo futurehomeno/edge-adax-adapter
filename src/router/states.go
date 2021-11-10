@@ -1,8 +1,8 @@
 package router
 
 import (
+	"github.com/futurehomeno/edge-adax-adapter/adax-api"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/adax-api"
 )
 
 func (fc *FromFimpRouter) getStates() error {

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/futurehomeno/edge-adax-adapter/utils"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/utils"
 )
 
 const ServiceName = "adax"

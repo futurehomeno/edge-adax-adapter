@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/futurehomeno/edge-adax-adapter/adax-api"
+	"github.com/futurehomeno/edge-adax-adapter/model"
 	"github.com/futurehomeno/fimpgo"
 	"github.com/futurehomeno/fimpgo/utils"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/adax-api"
-	"github.com/thingsplex/adax/model"
 )
 
 type FromFimpRouter struct {
