@@ -9,6 +9,10 @@ import (
 	"github.com/thingsplex/adax/model"
 )
 
+const (
+	maxSetpoint = 35.0
+)
+
 func (fc *FromFimpRouter) handleThermostatMessage(deviceID string, oldMsg *fimpgo.Message) {
 	switch oldMsg.Payload.Type {
 	case "cmd.setpoint.set":
@@ -44,6 +48,10 @@ func (fc *FromFimpRouter) handleSetpointSet(deviceID string, oldMsg *fimpgo.Mess
 		log.Error("Can't convert newtemp to float")
 
 		return err
+	}
+
+	if newTemp >= maxSetpoint {
+		newTemp = maxSetpoint
 	}
 
 	home, room, _, err := fc.findHomeRoomAndDeviceFromDeviceID(deviceID)
