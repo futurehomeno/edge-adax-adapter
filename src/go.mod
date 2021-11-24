@@ -1,4 +1,4 @@
-module github.com/thingsplex/adax
+module github.com/futurehomeno/edge-adax-adapter
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect

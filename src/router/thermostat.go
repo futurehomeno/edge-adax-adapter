@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/futurehomeno/edge-adax-adapter/model"
 	"github.com/futurehomeno/fimpgo"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/model"
 )
 
 const (

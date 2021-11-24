@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/futurehomeno/edge-adax-adapter/adax-api"
+	"github.com/futurehomeno/edge-adax-adapter/model"
+	"github.com/futurehomeno/edge-adax-adapter/router"
 	"github.com/futurehomeno/fimpgo"
 	"github.com/futurehomeno/fimpgo/discovery"
 	"github.com/futurehomeno/fimpgo/edgeapp"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/thingsplex/adax/adax-api"
-	"github.com/thingsplex/adax/model"
-	"github.com/thingsplex/adax/router"
 	"github.com/thoas/go-funk"
 )
 
