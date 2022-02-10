@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	API_URL = "https://api-1.adax.no/client-api"
+	API_URL = "https://api-1.adax.no/r-api"
 )
 
 type (
@@ -119,7 +119,7 @@ func (clt *Client) Login(username, password string) error {
 }
 
 func (clt *Client) GetUsers(accessToken string) (int, error) {
-	url := "https://adax-api-test.azurewebsites.net/r-test-api/rest/users"
+	url := fmt.Sprintf("%s%s", API_URL, "/rest/users")
 	method := "GET"
 
 	client := &http.Client{}
@@ -141,7 +141,7 @@ func (clt *Client) GetUsers(accessToken string) (int, error) {
 }
 
 func (clt *Client) GetCode() (string, error) {
-	url := "https://adax-api-test.azurewebsites.net/r-test-api/auth/auth?client_id=future-home-api-test&response_type=code&state=your_state&scope=your_scope&redirect_uri=https://postman-echo.com/get?foo1=bar1"
+	url := fmt.Sprintf("%s%s", API_URL, "/auth/auth?client_id=future-home-api-test&response_type=code&state=your_state&scope=your_scope&redirect_uri=https://postman-echo.com/get?foo1=bar1")
 	method := "GET"
 
 	client := &http.Client{}
@@ -160,7 +160,7 @@ func (clt *Client) GetCode() (string, error) {
 }
 
 func (clt *Client) GetTokens(code string) (string, string, error) {
-	url := "https://adax-api-test.azurewebsites.net/r-test-api/auth/token"
+	url := fmt.Sprintf("%s%s", API_URL, "/auth/token")
 	method := "POST"
 
 	payload := strings.NewReader(fmt.Sprintf("%s%s%s", "grant_type=authorization_code&code=", code, "&redirect_uri=https%3A%2F%2Fpostman-echo.com%2Fget%3Ffoo1%3Dbar1"))
