@@ -12,7 +12,7 @@ import (
 type ()
 
 func (s *State) GetStates(userId int, accessToken string) (*State, error) {
-	url := "https://adax-api-test.azurewebsites.net/r-test-api/rest/v1/state"
+	url := fmt.Sprintf("%s%s", API_URL, "/rest/v1/state")
 	method := "POST"
 	userIdStr := strconv.Itoa(userId)
 	payloadString := fmt.Sprintf("%s%s%s", "{\"userIds\": [", userIdStr, ", 1],\"withTemperatures\": true,\"withPowerUsage\": true}")
@@ -38,7 +38,7 @@ func (s *State) GetStates(userId int, accessToken string) (*State, error) {
 }
 
 func (hr *HomesAndRooms) GetHomesAndRooms(userId int, accessToken string) (*HomesAndRooms, error) {
-	url := "https://adax-api-test.azurewebsites.net/r-test-api/rest/v1/configuration"
+	url := fmt.Sprintf("%s%s", API_URL, "/rest/v1/configuration")
 	method := "POST"
 
 	userIdStr := strconv.Itoa(userId)
@@ -65,7 +65,7 @@ func (hr *HomesAndRooms) GetHomesAndRooms(userId int, accessToken string) (*Home
 }
 
 func (s *State) SetTemperature(userId int, homeId int, roomId int, targetTemperature float64, accessToken string) error {
-	url := "https://adax-api-test.azurewebsites.net/r-test-api/rest/v1/control"
+	url := fmt.Sprintf("%s%s", API_URL, "/rest/v1/control")
 	method := "PUT"
 
 	targetTemperature *= 100
